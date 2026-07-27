@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <!-- A shared transcript must never be indexed. This meta is the in-document layer; the
+         server also sets X-Robots-Tag + CSP on the /share route, and robots.txt disallows it. -->
+    <meta name="robots" content="noindex,nofollow,noarchive,nosnippet,noimageindex" />
+    <meta name="referrer" content="no-referrer" />
+    <meta name="theme-color" content="#161616" media="(prefers-color-scheme: dark)" />
+    <meta name="theme-color" content="#fcfcfc" media="(prefers-color-scheme: light)" />
+    <link rel="icon" type="image/svg+xml" href="/favicon-cat.svg" />
+    <!-- Generic title only — the real (redacted) title is fetched + set client-side, so no
+         transcript text is ever present in the static HTML for unfurlers / no-JS crawlers. -->
+    <title>Shared transcript · oiia</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <noscript>This shared transcript requires JavaScript to view.</noscript>
+    <script type="module" src="/src/share/main.tsx"></script>
+  </body>
+</html>

@@ -1,0 +1,484 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+@import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  /* Reader/transcript font: the NATIVE system stack (SF on Apple, Segoe on Windows, plus the
+     platform CJK faces so Chinese renders in PingFang/微软雅黑, not a webfont fallback). Amp uses
+     system-ui for its transcript and it reads noticeably crisper/denser than Inter at small sizes —
+     this is the font the reading surface wants. Inter stays the brand/landing face. */
+  --font-reader: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans CJK SC", sans-serif;
+}
+
+html {
+  color-scheme: light dark;
+}
+
+/* SF Pro stylistic sets on Apple platforms (AMP's darwin detail): ss06 centers the colon,
+   ss07 tunes disambiguation glyphs — a subtle crispness bump. No-op on non-SF fonts. */
+html.is-darwin body {
+  font-feature-settings: "ss06" 1, "ss07" 1;
+}
+
+/* Fill EVERY OS-managed band (status bar, safe-area insets, overscroll/rubber-band gutter) with the
+   shell frame colour so the app reads as one uniform surface — no whiter seam where the web view
+   meets the system chrome ("割裂"). Matches the theme-color meta + the App shell bg-[var(--app-frame)].
+   Light uses the warm paper frame; dark uses the shell dark. */
+html, body {
+  background-color: #F1F4ED;
+}
+@media (prefers-color-scheme: dark) {
+  html, body {
+    background-color: #1E1E1E;
+  }
+}
+
+/* Overlay shadow system (AMP-style crisp edges). The old ad-hoc shadows used a big POSITIVE-radius
+   blur (e.g. 0 20px 60px) that bloomed a soft grey haze around all four sides — the "糊"/mushy look.
+   AMP keeps its heaviest shadow at ~0 10px 22px and leans on a crisp 1px edge. These two tiers pull
+   the blur IN with negative spread so it sits under the surface (contained, not hazy); the sharp
+   boundary comes from each surface's own 1px border. `-pop` = menus/popovers, `-modal` = centered
+   dialogs/palettes. Dark mode gets a deeper, still-contained shadow. */
+.oiia-shadow-pop {
+  box-shadow: 0 6px 16px -6px rgba(0, 0, 0, 0.16), 0 2px 6px -3px rgba(0, 0, 0, 0.10);
+}
+.oiia-shadow-modal {
+  box-shadow: 0 18px 44px -18px rgba(0, 0, 0, 0.30), 0 6px 14px -8px rgba(0, 0, 0, 0.14);
+}
+@media (prefers-color-scheme: dark) {
+  .oiia-shadow-pop {
+    box-shadow: 0 8px 20px -6px rgba(0, 0, 0, 0.55), 0 2px 8px -3px rgba(0, 0, 0, 0.40);
+  }
+  .oiia-shadow-modal {
+    box-shadow: 0 22px 52px -18px rgba(0, 0, 0, 0.62), 0 6px 16px -8px rgba(0, 0, 0, 0.45);
+  }
+}
+
+/* ── oiia share-page color system ───────────────────────────────────────────
+   A warm "paper" reading surface for the public /share viewer, in the spirit of
+   Amp (ampcode.com): NOT stark black-on-white. The neutrals carry a warm cast,
+   the foreground is a near-black that isn't pure black, separators are
+   whisper-soft tinted hairlines (low alpha), and SURFACES are present soft
+   mid-tones (foreground-derived ~6-9% alpha — the third tone that keeps the page
+   from collapsing into bg+text). One place to tune the whole palette. */
+:root {
+  --sh-bg: #F6F3EC;                       /* warm paper */
+  --sh-fg: #2B2620;                       /* warm near-black — body text */
+  --sh-title: #211C16;                    /* headline */
+  --sh-muted: #837B6C;                    /* meta / secondary / links */
+  --sh-faint: #C7BEAC;                    /* byline separators */
+  --sh-line: rgba(67, 54, 33, 0.13);      /* soft separators / borders */
+  --sh-line-strong: rgba(67, 54, 33, 0.20); /* chip border */
+  --sh-surface: rgba(67, 54, 33, 0.06);   /* tool rows */
+  --sh-surface-2: rgba(67, 54, 33, 0.085);/* user panel — the clear mid-tone */
+  --sh-surface-border: rgba(67, 54, 33, 0.07);
+  --sh-hover: rgba(67, 54, 33, 0.05);
+  --sh-tool-label: #564E3F;
+
+  /* App surface "paper" (light mode) — modelled on the REAL Amp app (see memory amp-color-card):
+     a faint green-tinted neutral instead of stark white, so large surfaces read as calm paper, not
+     a glare of #FFF. Kept VERY subtle (≈1% chroma) — solid, not gaudy. A 2-step ladder (frame a
+     touch deeper than surface) gives depth without borders. Dark mode is unchanged. */
+  --app-frame: #F1F4ED;     /* outermost shell — the deeper paper tone */
+  --app-surface: #FBFCF8;   /* main content / composer — faint green-white, replaces bg-white */
+
+  /* ── Semantic status colors ──
+     Consumed by the StatusDot primitive (ui/StatusDot.tsx) and any
+     status chip. ONE palette for "what state is this thing in" across the app. */
+  --status-live: #22A06B;
+  --status-working: #C77D2E;
+  --status-error: #E5484D;
+  --status-idle: #C9CDD2;
+  --status-muted: #B0B0B0;
+  --status-info: #6E87B0;
+
+  /* Reader column width. The transcript is centred at this cap. Default widened to 52rem — with
+     the smaller system-font body the measure still reads comfortably while using more of the
+     screen (the old 46rem left big desktops half-empty). "Wide mode" widens it further for
+     tables/code/diffs. Gated to ≥1024px below: on phones the column is viewport-bound.
+     --composer-w is the invariant centre track; --composer-dock-w spans the full content width so
+     the two EQUAL side tracks absorb whatever the window offers. Satellites hug the field via
+     justify-self and may grow OUTWARD into their track — a long model label uses real page margin
+     on a big display instead of being frozen by a fixed dock cap, while each satellite clamps to
+     its own track (max-w) so a narrow-roomy window truncates instead of clipping under the
+     sidebar. State changes never reflow the typing measure. */
+  --reader-w: 52rem;
+  --composer-w: 36rem;
+  --composer-stack-w: 40rem;
+  --composer-dock-w: 100%;
+  /* Left marker gutter for the transcript: every reader block reserves this on the left for its
+     marker (tool icon / thinking chevron) so ALL TEXT — prose, tool labels,
+     thinking labels — starts at the SAME column. Markers hang in the gutter; nothing is pushed
+     out of line. (AMP achieves one text column by having no icons; we keep icons + a gutter.) */
+  --reader-gutter: 1.5rem;
+}
+@media (min-width: 1024px) {
+  .reader-wide { --reader-w: 68rem; }
+}
+
+/* Reader actions intentionally float above the resting composer (z-40), but a composer-owned menu
+   must win while it is open — as must the pending tray while its stack is EXPANDED (it overlays
+   the strip where the reader dock floats). Raise the ONE composer stacking context only for those
+   states; drawers still close those surfaces on outside activation and keep their z-50 ceiling. */
+.oiia-composer-wrap:has([data-testid="slash-menu"], [role="dialog"], [role="menu"], [data-pending-expanded]) {
+  z-index: 45;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --status-live: #35B57E;
+    --status-working: #D18E45;
+    --status-error: #E5484D;
+    --status-idle: #5A5A5A;
+    --status-muted: #666666;
+    --status-info: #93ABD1;
+    --sh-bg: #17150F;                      /* warm near-black */
+    --sh-fg: #E6E0D2;                      /* warm off-white */
+    --sh-title: #F1ECDE;
+    --sh-muted: #948C7B;
+    --sh-faint: #3E3930;
+    --sh-line: rgba(235, 228, 210, 0.12);
+    --sh-line-strong: rgba(235, 228, 210, 0.18);
+    --sh-surface: rgba(235, 228, 210, 0.05);
+    --sh-surface-2: rgba(235, 228, 210, 0.075);
+    --sh-surface-border: rgba(235, 228, 210, 0.06);
+    --sh-hover: rgba(235, 228, 210, 0.045);
+    --sh-tool-label: #CBC3B2;
+  }
+}
+
+/* brand wordmark loader: the mark stays still while a quiet sheen passes over it
+   (reads as "receiving", not a busy spinner). Used during the file-preview fetch. */
+.oiia-loader {
+  font-family: var(--font-mono);
+  font-weight: 500;
+  font-size: 28px;
+  letter-spacing: 0.08em;
+  user-select: none;
+  --oiia-base: rgba(55, 55, 55, 0.62);
+  --oiia-sheen: rgba(20, 20, 20, 0.95);
+  /* repeat-x (NOT no-repeat): the base must TILE so it covers the whole word at every animation
+     phase. With no-repeat + a 200%-wide gradient panned across, the parts of the text the gradient
+     didn't cover had no background → color:transparent made those letters vanish (the "前几个字母消失"
+     bug). Tiling keeps the base everywhere; only the narrow sheen band sweeps. */
+  background-image: linear-gradient(100deg, var(--oiia-base) 42%, var(--oiia-sheen) 50%, var(--oiia-base) 58%);
+  background-size: 200% 100%;
+  background-repeat: repeat-x;
+  background-position: 200% 0;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+  animation: oiia-sheen 2.4s linear infinite;
+}
+/* Shift by exactly one tile (200%) so the loop is seamless — 0% and 200% render an identical pattern
+   under repeat-x, so there's no jump when the animation restarts. */
+@keyframes oiia-sheen {
+  0% { background-position: 200% 0; }
+  100% { background-position: 0% 0; }
+}
+
+/* Header brand wordmark ("oiia"): the SAME mono artistic face as the loader, but STATIC by default —
+   a calm solid mark that sits beside SUBGROUPX. When the agent is working (.is-working) the same sheen
+   sweep runs, so the product mark itself becomes the activity indicator (mirrors the file-load loader).
+   The sheen only paints while working, so there's no idle repaint cost. */
+.brand-oiia {
+  font-family: var(--font-mono);
+  font-weight: 600;
+  font-size: 14px;
+  letter-spacing: 0.01em;
+  line-height: 1;
+  user-select: none;
+  color: #2C2C2C;
+  transition: color 0.2s;
+}
+@media (prefers-color-scheme: dark) { .brand-oiia { color: #DEDEDE; } }
+.brand-oiia.is-working {
+  --oiia-base: rgba(60, 60, 60, 0.5);
+  --oiia-sheen: rgba(10, 10, 10, 0.95);
+  background-image: linear-gradient(100deg, var(--oiia-base) 42%, var(--oiia-sheen) 50%, var(--oiia-base) 58%);
+  background-size: 200% 100%;
+  background-repeat: repeat-x;
+  background-position: 200% 0;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+  animation: oiia-sheen 2.4s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+@media (prefers-color-scheme: dark) {
+  .brand-oiia.is-working {
+    --oiia-base: rgba(200, 200, 200, 0.45);
+    --oiia-sheen: rgba(255, 255, 255, 0.95);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .brand-oiia.is-working { animation: none; }
+}
+
+/* oiiaioooooiai cat loader. Each variant is a different linear map applied to
+   the cat (the "transformation matrix cat" meme), chosen at random per mount. */
+.oiia-stage { display: flex; align-items: center; justify-content: center; perspective: 360px; }
+.oiia-cat { display: block; will-change: transform; user-select: none; -webkit-user-drag: none; }
+
+/* rotation matrix [[cosθ,−sinθ],[sinθ,cosθ]] — fast in-plane spin with a beat */
+.oiia-rotate { transform-origin: 50% 50%; animation: oiia-rotate 0.95s cubic-bezier(.65,.02,.35,1) infinite; }
+@keyframes oiia-rotate {
+  0% { transform: rotate(0deg); }
+  72% { transform: rotate(360deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* point reflection −I — flip through the plane (scaleX/Y sweep through −1) */
+.oiia-flip { transform-origin: 50% 50%; animation: oiia-flip 1.15s ease-in-out infinite; }
+@keyframes oiia-flip {
+  0%, 100% { transform: scale(1, 1); }
+  25% { transform: scale(-1, 1); }
+  50% { transform: scale(-1, -1); }
+  75% { transform: scale(1, -1); }
+}
+
+/* shear matrix [[1,−1],[0,1]] — skew wobble, hinged at the feet */
+.oiia-shear { transform-origin: 50% 92%; animation: oiia-shear 0.85s ease-in-out infinite; }
+@keyframes oiia-shear {
+  0%, 100% { transform: skewX(0deg) skewY(0deg); }
+  25% { transform: skewX(-22deg) skewY(5deg); }
+  75% { transform: skewX(22deg) skewY(-5deg); }
+}
+
+/* degenerate projection diag(1,1,0) — squash toward a line, then bounce back */
+.oiia-squash { transform-origin: 50% 92%; animation: oiia-squash 0.72s cubic-bezier(.5,0,.5,1) infinite; }
+@keyframes oiia-squash {
+  0%, 100% { transform: scale(1, 1); }
+  45% { transform: scale(1.2, 0.14); }
+  62% { transform: scale(0.9, 1.1); }
+  80% { transform: scale(1.03, 0.97); }
+}
+
+/* spin3d — the real 3D turntable (webp animates itself); a subtle bob adds life */
+.oiia-spin3d { transform-origin: 50% 60%; animation: oiia-bob 1.7s ease-in-out infinite; }
+@keyframes oiia-bob {
+  0%, 100% { transform: translateY(0) scale(1); }
+  50% { transform: translateY(-4%) scale(1.02); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .oiia-rotate, .oiia-flip, .oiia-shear, .oiia-squash, .oiia-spin3d { animation-duration: 3s; }
+}
+
+/* Session-loading overlay: fades in over the (empty) timeline while history loads,
+   then fades out to reveal the ready content — so it covers the wait instead of
+   adding a hard pop. Absolute so it never reflows the chat; pointer-events:none so
+   it never blocks the composer. `bottom` is set inline to clear the composer. */
+.oiia-overlay {
+  position: absolute; left: 0; right: 0; top: 0;
+  display: flex; align-items: center; justify-content: center;
+  pointer-events: none; z-index: 10;
+}
+.oiia-overlay-in { animation: oiia-fade-in 0.18s ease-out both; }
+.oiia-overlay-out { animation: oiia-fade-out 0.34s ease-in both; }
+@keyframes oiia-fade-in { from { opacity: 0; } to { opacity: 1; } }
+/* Rise-in for a pending steer/queue row joining the composer's outbox tray. */
+@keyframes oiia-rise-in { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+/* Slide-down reveal (a freshly-created share link dropping in under its button). */
+@keyframes oiia-slide-down { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes oiia-fade-out { from { opacity: 1; } to { opacity: 0; } }
+@media (prefers-color-scheme: dark) {
+  .oiia-loader { --oiia-base: rgba(205, 205, 205, 0.5); --oiia-sheen: rgba(245, 245, 245, 0.96); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .oiia-loader {
+    animation: none;
+    background: none;
+    -webkit-text-fill-color: currentColor;
+    color: rgba(120, 120, 120, 0.68);
+  }
+}
+
+body {
+  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+/* Native scrollbars with neutral gray color to avoid any bluish tint */
+* {
+  scrollbar-color: #E5E5E5 transparent;
+}
+
+/* ── Mobile "native app" feel (adopted from the Amp / ampcode.com analysis, §10) ──────────────
+   Amp's mobile polish is feature-driven, never UA-sniffed, and it's what makes the web app feel
+   like a native app on touch. The high-impact, ACCESSIBILITY-SAFE wins (we keep pinch-zoom — no
+   user-scalable lock, and text stays selectable):
+   • overscroll-behavior:none → no rubber-band bounce / pull-to-refresh / scroll-chaining, so the
+     page reads as an app surface, not a scrollable web page. (Tailwind v4 already gates every
+     `hover:` behind @media(hover:hover), so hover styles don't "stick" after a tap — no work needed.)
+   • transparent tap-highlight → kills the grey flash iOS/Android paint over a tapped element.
+   • on CONTROLS only (a/button/[role=button]/summary — not inputs, which need text gestures):
+     touch-action:manipulation drops the legacy 300ms tap delay + double-tap-zoom (pinch still works),
+     and -webkit-touch-callout:none removes the long-press context menu — the two tells of a web app. */
+html, body {
+  overscroll-behavior: none;
+}
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+a, button, [role="button"], summary {
+  touch-action: manipulation;
+  -webkit-touch-callout: none;
+}
+
+@keyframes google-rotate {
+  100% { transform: rotate(360deg); }
+}
+
+@keyframes google-dash {
+  0% { stroke-dasharray: 1, 200; stroke-dashoffset: 0; }
+  50% { stroke-dasharray: 89, 200; stroke-dashoffset: -35px; }
+  100% { stroke-dasharray: 89, 200; stroke-dashoffset: -124px; }
+}
+
+@keyframes modal-overlay-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes modal-overlay-out {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+@keyframes modal-content-in {
+  from {
+    opacity: 0;
+    transform: translateY(18px) scale(0.965);
+  }
+  62% {
+    opacity: 1;
+    transform: translateY(-3px) scale(1.006);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes modal-content-out {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(10px) scale(0.985);
+  }
+}
+
+.google-spinner {
+  animation: google-rotate 1.568s linear infinite;
+}
+
+.google-spinner-circle {
+  animation: google-dash 1.333s ease-in-out infinite;
+  stroke-linecap: round;
+}
+
+@media (prefers-color-scheme: dark) {
+  * {
+    scrollbar-color: #333 transparent;
+  }
+}
+
+/*
+ * Suppress the browser's autofill background (the blue/yellow box Chrome & Safari
+ * paint on autofilled inputs). The long transition delay keeps the autofill
+ * background from ever rendering, so inputs keep their own themed background;
+ * `currentColor` keeps the autofilled text readable in light and dark.
+ */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active {
+  -webkit-text-fill-color: currentColor !important;
+  caret-color: currentColor;
+  transition: background-color 600000s 0s, color 600000s 0s;
+}
+
+/*
+ * Mobile: prevent iOS Safari's auto-zoom on input focus (and the annoying
+ * "doesn't zoom back out on blur"). The accessible, non-brute-force fix — used
+ * widely instead of `user-scalable=no` — is to give focusable form controls a
+ * font-size of at least 16px on small screens; below 16px iOS zooms in. Pinch-
+ * zoom stays enabled (the viewport meta is untouched). Desktop is unaffected.
+ */
+@media (max-width: 767px) {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+  textarea,
+  select,
+  [contenteditable="true"] {
+    font-size: 16px !important;
+  }
+}
+
+/* ── Chat density (paired with the font-size control) ───────────────────────
+   The font-size control's `zoom` scales the chat content's SIZE. At the
+   smallest step ("Compact") we ALSO tighten the VERTICAL RHYTHM — line-height,
+   paragraph gaps, and inter-message gaps — so Compact genuinely packs more on
+   screen instead of just shrinking. Scoped to `.chat-density-compact`, added to
+   the chat content wrapper in MainContent only at scale ≤ 0.9. */
+.chat-density-compact { line-height: 1.4; }
+/* line spacing INSIDE prose (the main "行间距") + tighter paragraph separation */
+.chat-density-compact .markdown-body,
+.chat-density-compact .markdown-body li { line-height: 1.4 !important; }
+.chat-density-compact .markdown-body p { line-height: 1.4 !important; margin-block: 0.32em !important; }
+/* user bubble: tighter leading + less vertical padding */
+.chat-density-compact [data-testid="msg-user"] { line-height: 1.4 !important; padding-top: 0.4rem !important; padding-bottom: 0.4rem !important; }
+/* inter-message (turn) gaps: assistant + user(toc anchor) + recap were mb-5 (1.25rem) */
+.chat-density-compact [data-testid="msg-assistant"],
+.chat-density-compact [data-testid="recap-message"],
+.chat-density-compact [id^="toc-"] { margin-bottom: 0.55rem !important; }
+/* Heading rhythm: the base theme gives headings 1.5–2rem top / 1–1.25rem bottom margins,
+   which at compact density read as big empty bands above/below each title. Tighten them so
+   a heading sits close to the text it introduces (the in-paragraph leading is left alone —
+   that spacing was already liked). */
+.chat-density-compact .markdown-body h1,
+.chat-density-compact .markdown-body h2 { margin-top: 1rem !important; margin-bottom: 0.45rem !important; }
+.chat-density-compact .markdown-body h3,
+.chat-density-compact .markdown-body h4,
+.chat-density-compact .markdown-body h5,
+.chat-density-compact .markdown-body h6 { margin-top: 0.8rem !important; margin-bottom: 0.4rem !important; }
+/* Code blocks at compact density:
+   1. External margin 1.5rem → 0.65rem so the block doesn't float in a sea of whitespace
+      between the heading/text above and the text below — and the gap above/below now matches
+      (heading-mb 0.45rem & p-mb 0.32em both sit under the 0.65rem block margin → balanced).
+   2. Internal label→code gap: the header's bottom padding (0.5rem) + the body's top padding
+      (0.75rem) stacked to ~1.25rem of dead space between the language label and the first
+      code line. Trim both so the label sits right above the code. */
+.chat-density-compact .codeblock-shell { margin: 0.65rem 0 !important; }
+.chat-density-compact .codeblock-header { padding-top: 0.3rem !important; padding-bottom: 0.2rem !important; }
+.chat-density-compact .codeblock-body { padding-top: 0.4rem !important; }
+
+/* ── Shell tab state panels ─────────────────────────────────────────────────
+   Quiet entrance for the terminal's empty/verify panels and the ended pill:
+   a short fade + 4px rise, so state changes read as placed rather than popped.
+   Decorative only — disabled under prefers-reduced-motion. */
+.shell-panel-in {
+  animation: shell-panel-in 0.28s cubic-bezier(0.2, 0.7, 0.3, 1) both;
+}
+@keyframes shell-panel-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .shell-panel-in { animation: none; }
+}
+
+/* Quiet opacity pulse used by the sandbox-kind glyph while a runtime starts. */
+@keyframes activity-dot-pulse {
+  0%, 100% { opacity: 0.2; }
+  50% { opacity: 0.9; }
+}
+.activity-dot-pulse { animation: activity-dot-pulse 1.6s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .activity-dot-pulse { animation: none; opacity: 0.7; }
+}

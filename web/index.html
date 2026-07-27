@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <!-- No viewport-fit=cover: in the standalone PWA, cover made the web view flicker
+         between full-bleed (under the status bar) and status-bar-excluded heights
+         (812↔874 on a Dynamic Island device), which combined with status-bar-style=default
+         produced the jumpy, too-tall top. Without it, iOS keeps the web view inside the
+         safe area (stable height; the status-bar / home-indicator bands are filled by
+         theme-color), so no overlap and no jump. -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" type="image/svg+xml" href="/favicon-cat.svg" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-cat-32.png" />
+    <link rel="apple-touch-icon" href="/apple-touch-cat.png" />
+
+    <!-- PWA: installable app shell. Manifest + theme/install hints. -->
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <!-- theme-color drives the OS window chrome / status bar / safe-area bands of the installed
+         app. MUST match the app frame (--app-frame #F1F4ED light / #1E1E1E dark) or the status bar
+         reads as a jarring whiter band against the warm app ("割裂"). Paired with html/body
+         background-color in index.css so EVERY OS-managed band (status bar, safe areas, overscroll)
+         is the same colour as the shell — one uniform surface like Amp. -->
+    <meta name="theme-color" content="#1E1E1E" media="(prefers-color-scheme: dark)" />
+    <meta name="theme-color" content="#F1F4ED" media="(prefers-color-scheme: light)" />
+    <!-- Let the UA pick a dark default canvas for dark-preferring users; without this the
+         browser's own pre-paint background is forced white even when our first paint is dark. -->
+    <meta name="color-scheme" content="light dark" />
+    <!-- mobile-web-app-capable is the standard; apple-mobile-web-app-capable is kept for
+         iOS Safari (it still gates the standalone splash screen). -->
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <!-- `default` (not black-translucent): in iOS standalone the status bar stays an opaque,
+         theme-adaptive bar and the web view starts BELOW it — so the top chrome no longer
+         collides with the clock/signal/battery, and status-bar text isn't forced white
+         (black-translucent made it invisible on the light theme). Paired with the
+         env(safe-area-inset-*) handling in index.css for the home indicator / landscape notch. -->
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="oiia" />
+    <meta name="application-name" content="oiia" />
+
+    <!-- Warm the session-loading cat at idle/low priority so it's instant when first shown. -->
+    <link rel="prefetch" as="image" href="/oiia-cat.png" />
+    <link rel="prefetch" as="image" href="/oiia-spin.webp" />
+    <title>oiia · coding agents in the browser</title>
+    <!-- Boot splash. Inline-only (zero network requests): it paints in the same parse pass as
+         the HTML, seconds before the JS bundle executes, and is removed at React's first commit
+         (see main.tsx removeBootSplash). Colors MUST mirror --app-frame (#F1F4ED / #1E1E1E) —
+         the same pair as the theme-color metas above and html/body in index.css — so the
+         Android install splash → first paint → app shell chain is one continuous surface. -->
+    <style>
+      /* Pre-CSS canvas: index.css sets the same colors later, but this copy is available at
+         the very first paint, before any external stylesheet. */
+      html { background-color: #F1F4ED; }
+
+      /* Fixed overlay: out of layout flow, so neither its presence nor its removal can shift
+         any element — zero CLS by construction. Sibling of #root (never inside it):
+         createRoot() clears #root synchronously at first render, which would kill any fade. */
+      #splash {
+        position: fixed;
+        inset: 0;
+        z-index: 2147483000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background-color: #F1F4ED;
+        transition: opacity 0.28s ease;
+        user-select: none;
+        -webkit-user-select: none;
+        cursor: default;
+      }
+      #splash.splash--out { opacity: 0; pointer-events: none; }
+
+      /* Brand lockup — the sidebar wordmark's treatment, scaled up. Entrance is DELAYED 120ms:
+         on a warm/fast load React commits before the delay elapses, so the user only ever sees
+         the calm frame color, never a mark that blinks in and instantly fades out. */
+      .splash-lockup {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+        opacity: 0;
+        animation:
+          splash-in 0.5s ease-out 0.12s both,
+          splash-breathe 3s ease-in-out 1.4s infinite;
+      }
+      .splash-diamond {
+        width: 16px;
+        height: 16px;
+        border-radius: 3px;
+        background: #ff003c;
+        transform: rotate(45deg);
+        flex: none;
+      }
+      .splash-groupx {
+        font-weight: 700;
+        font-size: 17px;
+        letter-spacing: 0.05em;
+        color: #1A1A1A;
+      }
+      .splash-x { color: #0AA6B4; }
+      .splash-rule { width: 1px; height: 18px; background: rgba(0, 0, 0, 0.14); flex: none; }
+      /* System mono stack ON PURPOSE (no "JetBrains Mono"): that webfont's @font-face only
+         exists once the bundle CSS loads; naming it here would swap glyphs mid-splash. */
+      .splash-oiia {
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+        font-weight: 600;
+        font-size: 19px;
+        letter-spacing: 0.01em;
+        color: #2C2C2C;
+      }
+
+      @keyframes splash-in {
+        from { opacity: 0; transform: translateY(4px); }
+        to   { opacity: 1; transform: none; }
+      }
+      /* Quiet breathing ("receiving", not busy) — the in-app sheen takes over post-boot. */
+      @keyframes splash-breathe {
+        0%, 100% { opacity: 1; }
+        50%      { opacity: 0.55; }
+      }
+
+      @media (prefers-color-scheme: dark) {
+        html { background-color: #1E1E1E; }
+        #splash { background-color: #1E1E1E; }
+        .splash-groupx { color: #EDEDED; }
+        .splash-x { color: #00E5F0; }
+        .splash-rule { background: rgba(255, 255, 255, 0.16); }
+        .splash-oiia { color: #DEDEDE; }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        #splash { transition: none; }           /* removal falls back to the JS timeout */
+        .splash-lockup { animation: none; opacity: 1; }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <!-- Removed by removeBootSplash() in main.tsx at the app's first commit. -->
+    <div id="splash" aria-hidden="true">
+      <div class="splash-lockup">
+        <span class="splash-diamond"></span>
+        <span class="splash-groupx">SUBGROUP<span class="splash-x">X</span></span>
+        <span class="splash-rule"></span>
+        <span class="splash-oiia">oiia</span>
+      </div>
+    </div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

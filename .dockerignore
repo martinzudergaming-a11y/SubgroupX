@@ -1,0 +1,12 @@
+node_modules
+web/node_modules
+web/dist
+promo/node_modules
+promo/out
+data
+test-results
+playwright-report
+.git
+*.log
+.DS_Store
+docs/screens

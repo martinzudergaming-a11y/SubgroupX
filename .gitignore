@@ -1,0 +1,30 @@
+node_modules/
+web/node_modules/
+web/dist/
+data/
+test-results/
+playwright-report/
+*.log
+.DS_Store
+
+# temp build/verify/throwaway scripts at the repo root (e.g. _foo-test.mts, pv.mjs)
+/build-template.mjs
+/verify-tpl.mts
+/*-test.mjs
+/*-test.mts
+/_*.mjs
+/_*.mts
+node_modules
+web/node_modules
+
+# Server SSH key — must never be committed (untracked working file)
+fl
+
+# Downloaded third-party frontend (AMP) kept locally for analysis only — not ours to commit.
+docs/amp-source/
+
+# Moderation audit — contains user PII, keep local-only
+docs/moderation-r18-audit.md
+docs/security-escape-analysis.md
+docs/security-persistence-audit.md
+.tool-cap-check-*/

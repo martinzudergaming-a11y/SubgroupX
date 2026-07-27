@@ -1,0 +1,234 @@
+name: build
+# Build the oiia image off-host (on GitHub Actions, amd64) and push it to GHCR so
+# application hosts only pull an immutable image; scripts/deploy.sh never builds in place.
+
+on:
+  push:
+    branches: [main]
+  pull_request: {}
+  workflow_dispatch: {}
+
+# Only the latest build per ref needs to finish; cancel superseded ones.
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  sanitization:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+      - name: Check repository sanitization
+        run: |
+          node scripts/check-repo-sanitization.mts
+          node scripts/check-internal-blog.mts
+
+  source-verification:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            web/package-lock.json
+
+      # Skip third-party lifecycle scripts: this job only parses/types source and builds the browser
+      # bundle. Then explicitly run the repository-owned postinstall to apply the checked-in pi patch;
+      # runtime-native package scripts remain exercised by the image build.
+      - name: Install source-verification dependencies
+        run: |
+          npm ci --ignore-scripts --no-audit --no-fund
+          npm run postinstall
+          npm ci --prefix web --ignore-scripts --no-audit --no-fund
+
+      - name: Check source layout
+        run: |
+          npm run check:layout
+          npm run check:file-size
+          npm run check:exports
+          npm run check:orphan-comments
+
+      - name: Typecheck source
+        run: npm run typecheck
+
+      - name: Check dependency contracts
+        run: |
+          npm run check:dependencies
+          npm run check:responses-terminal
+          npm run check:provider-stream-timing
+          npm run check:edit-file-tool
+          npm run check:recap
+          npm run check:email-auth-flow
+          npm run check:password-reset
+          npm run check:ssh-sandbox
+          npm run check:ssh-guard
+          npm run check:client-log-intake
+          npm run check:responsive-panels
+          npm run check:highlighter-loading
+          npm run check:tool-fold
+          npm run check:kimi-provider
+          npm run check:google-auth
+
+      - name: Check Agent orchestration contracts
+        run: |
+          npm run check:agent-task-store
+          npm run check:orchestration-fk-indexes
+          npm run check:agent-context-digest
+          npm run check:agent-supervisor
+          npm run check:agent-tree-liveness
+          npm run check:runtime-task-dispatcher
+          npm run check:workflow-scheduler
+          npm run check:pi-child-worker
+          npm run check:tool-stream
+          npm run check:tool-result-cap
+          npm run check:install-state
+          npm run check:agent-runtime-integration
+          npm run check:orchestration-read-model
+          npm run check:orchestration-product-invalidation
+          npm run check:agent-activity-motion
+          npm run check:agent-team
+          npm run check:agent-team-ingress
+          npm run check:session-activity
+          npm run check:workflow-engine
+          npm run check:workflow-launch
+          npm run check:workflow-fresh-schema
+          npm run check:token-count-hard
+          npm run check:runtime-stream
+          npm run check:runtime-stream-client
+          npm run check:runtime-session-gateway
+          npm run check:pending-admission
+          npm run check:pending-client
+
+      # Every fast, deterministic harness in package.json that was registered but never wired here.
+      # All 65 were run against main on 2026-08-04 and pass in a bare checkout (no server, browser,
+      # or network). Deliberately NOT wired, with reasons:
+      #                                       tools under on-request); investigate before wiring
+      #   check:orchestration-delete-performance — fails on main (detach grows super-linearly when the
+      #                                       Task count doubles); investigate before wiring
+      #   check:orchestration-product-ui    — spawns a Playwright webServer; belongs to an e2e lane
+      #   check:runtime-pty-gateway         — needs an enabled local executor; env-dependent
+      - name: Check registered harnesses
+        run: |
+          npm run check:access-gate
+          npm run check:approval-persist
+          npm run check:audit-log
+          npm run check:ban
+          npm run check:bash-format
+          npm run check:bwrap
+          npm run check:capture
+          npm run check:compaction
+          npm run check:compaction-audit
+          npm run check:compaction-summary
+          npm run check:compaction-trigger
+          npm run check:connector
+          npm run check:connector-unconfined
+          npm run check:context-seed
+          npm run check:diagrams
+          npm run check:email-canonical
+          npm run check:email-verify
+          npm run check:executor-availability
+          npm run check:executor-selection
+          npm run check:file-cache
+          npm run check:file-preview
+          npm run check:first-task-suggestion
+          npm run check:fork
+          npm run check:fs-confinement
+          npm run check:hardening
+          npm run check:heredoc
+          npm run check:jail-provider
+          npm run check:memory-dreaming
+          npm run check:model-retry
+          npm run check:orchestration-product-read-model
+          npm run check:orchestration-read-performance
+          npm run check:orchestration-scheduler-performance
+          npm run check:overflow-recovery
+          npm run check:pasted-text
+          npm run check:pending-queue
+          npm run check:permission-subject
+          npm run check:predict-echo
+          npm run check:pty-input
+          npm run check:quota
+          npm run check:reasoning
+          npm run check:recovery
+          npm run check:replay-merge
+          npm run check:runtime-connector-tunnel
+          npm run check:runtime-ipc
+          npm run check:runtime-lease
+          npm run check:runtime-split
+          npm run check:sandbox-id
+          npm run check:secrets
+          npm run check:self-trajectory
+          npm run check:session-cache
+          npm run check:session-switch
+          npm run check:set-sandbox-owner
+          npm run check:sidebar-recovery
+          npm run check:ssh-passkey
+          npm run check:ssh-unconfined
+          npm run check:status
+          npm run check:stepup
+          npm run check:stream-smoothing
+          npm run check:subscribe-profile
+          npm run check:tool-source-lifecycle
+          npm run check:turn-model
+          npm run check:user-persist
+          npm run check:verify-flow
+          npm run check:workspace-write-lease
+          npm run check:ws-client-lifecycle
+          npm run check:ws-compression
+
+      - name: Build browser bundle
+        run: |
+          npm run build:web
+          npm run check:internal-blog-bundle
+          AGENT_WEB_INTERNAL_BLOG=0 npm run build:web
+          npm run check:internal-blog-disabled-bundle
+
+  image:
+    if: github.event_name != 'pull_request'
+    needs: [sanitization, source-verification]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      # BUILD_VERSION is baked into the bundle for stale-tab detection (the server
+      # reports the same value over `hello`). github.sha_short does not exist — derive it.
+      - id: vars
+        run: |
+          echo "sha_short=${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+          echo "date=$(LC_ALL=C date -u +%d%b%Y)" >> "$GITHUB_OUTPUT"
+
+      - uses: docker/setup-buildx-action@v4
+
+      - uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: docker/build-push-action@v7
+        with:
+          context: .
+          platforms: linux/amd64
+          push: true
+          tags: |
+            ghcr.io/n-wn/agent-web:${{ github.sha }}
+            ghcr.io/n-wn/agent-web:latest
+          build-args: |
+            BUILD_VERSION=${{ steps.vars.outputs.sha_short }}-${{ steps.vars.outputs.date }}
+          # GHA layer cache keeps the stable apt/node_modules layers warm so each build
+          # only rebuilds + pushes changed layers. NOTE: GHA cache is ~10GB/7-day; if it
+          # churns on this ~7.8GB image, switch cache-from/to to type=registry.
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

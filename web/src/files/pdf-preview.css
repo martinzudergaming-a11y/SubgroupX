@@ -1,0 +1,86 @@
+/* Minimal, component-scoped subset of PDF.js's viewer CSS. Text/annotation layers are disabled in
+   the compact reader, so importing pdf_viewer.css (and its global :root/toolbar rules) is wasteful
+   and would leak styling into the dashboard. Keep these selectors aligned with pdfjs-dist. */
+.oiia-pdf-preview {
+  /* Permit ordinary one/two-finger panning, but keep OS/browser pinch zoom inside this PDF window. */
+  touch-action: pan-x pan-y;
+}
+
+.oiia-pdf-stage {
+  -webkit-overflow-scrolling: touch;
+  overflow-anchor: none;
+  scrollbar-gutter: stable;
+}
+
+.oiia-pdf-pages {
+  --scale-factor: 1;
+  min-width: 100%;
+  min-height: 100%;
+  padding-block: 12px 20px;
+}
+
+.oiia-pdf-pages .page {
+  --user-unit: 1;
+  --total-scale-factor: calc(var(--scale-factor) * var(--user-unit));
+  --scale-round-x: 1px;
+  --scale-round-y: 1px;
+  direction: ltr;
+  width: 816px;
+  height: 1056px;
+  margin: 0 auto 12px;
+  position: relative;
+  overflow: visible;
+  border: 0;
+  background: #fff;
+  box-shadow:
+    0 2px 18px rgba(53, 48, 36, 0.13),
+    0 0 0 1px rgba(0, 0, 0, 0.055);
+  contain: layout paint;
+}
+
+.oiia-pdf-pages .dummyPage {
+  position: relative;
+  width: 0;
+  height: var(--viewer-container-height);
+}
+
+.oiia-pdf-pages .canvasWrapper {
+  overflow: hidden;
+  /* PDF.js's scoped WebKit workaround: inherit keeps resize/CSS zoom from tearing the backing
+     canvas while remaining visually equivalent to 100% inside the page. */
+  width: inherit;
+  height: 100%;
+}
+
+.oiia-pdf-pages .canvasWrapper canvas {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: inherit;
+  height: 100%;
+  margin: 0;
+  contain: content;
+}
+
+.oiia-pdf-pages .canvasWrapper canvas.detailView {
+  image-rendering: pixelated;
+}
+
+.oiia-pdf-pages [data-main-rotation="90"] {
+  transform: rotate(90deg) translateY(-100%);
+}
+
+.oiia-pdf-pages [data-main-rotation="180"] {
+  transform: rotate(180deg) translate(-100%, -100%);
+}
+
+.oiia-pdf-pages [data-main-rotation="270"] {
+  transform: rotate(270deg) translateX(-100%);
+}
+
+@media (forced-colors: active) {
+  .oiia-pdf-pages .page {
+    border: 1px solid CanvasText;
+    box-shadow: none;
+  }
+}
